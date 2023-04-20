@@ -1,9 +1,13 @@
-from django.urls import path
+from django.urls import path, include
 
-from .views import CatList, CatDetail
+from .views import CatViewSet, OwnerViewSet
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register('cats', CatViewSet)
+router.register('owners', OwnerViewSet)
 
 
 urlpatterns = [
-    path('cats/', CatList.as_view()),
-    path('cats/<int:pk>/', CatDetail.as_view()),
+    path('', include(router.urls)),
 ]
