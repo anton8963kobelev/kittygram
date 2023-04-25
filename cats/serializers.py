@@ -1,6 +1,26 @@
+import datetime as dt
+import webcolors
 from rest_framework import serializers
 
-from .models import Cat, Owner, Achievement, AchievementCat
+from .models import Cat, Owner, Achievement, AchievementCat, CHOICES
+
+
+class Hex2NameColor(serializers.Field):
+    # При чтении данных ничего не меняем - просто возвращаем как есть
+    def to_representation(self, value):
+        return value
+    # При записи код цвета конвертируется в его название
+    def to_internal_value(self, data):
+        # Доверяй, но проверяй
+        try:
+            # Если имя цвета существует, то конвертируем код в название
+            data = webcolors.hex_to_name(data)
+        except ValueError:
+            # Иначе возвращаем ошибку
+            raise serializers.ValidationError('Для этого цвета нет имени')
+        # Возвращаем данные в новом формате
+        return data
+
 
 
 class OwnerSerializer(serializers.ModelSerializer):
@@ -12,18 +32,33 @@ class OwnerSerializer(serializers.ModelSerializer):
 
 
 class AchievementSerializer(serializers.ModelSerializer):
+    achievement_name = serializers.CharField(source='name')
 
     class Meta:
         model = Achievement
-        fields = ('id', 'name')
+        fields = ('id', 'achievement_name')
+
+
+class CatListSerializer(serializers.ModelSerializer):
+    color = serializers.ChoiceField(choices=CHOICES)
+    
+    class Meta:
+        model = Cat
+        fields = ('id', 'name', 'color')
 
 
 class CatSerializer(serializers.ModelSerializer):
     achievements = AchievementSerializer(many=True, required=False)
+    age = serializers.SerializerMethodField()
+    # color = Hex2NameColor()
+    color = serializers.ChoiceField(choices=CHOICES)
 
     class Meta:
         model = Cat
-        fields = ('id', 'name', 'color', 'birth_year', 'owner', 'achievements')
+        fields = ('id', 'name', 'color', 'birth_year', 'owner', 'achievements', 'age')
+
+    def get_age(self, obj):
+        return dt.datetime.now().year - obj.birth_year
 
     def create(self, validated_data):
         # Если в исходном запросе не было поля achievements
